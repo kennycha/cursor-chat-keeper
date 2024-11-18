@@ -2,6 +2,8 @@
   "name": "cursor-chat-keeper",
   "displayName": "Cursor Chat Keeper",
   "description": "Collects and organizes scripts from Cursor chat into Markdown files.",
+  "repository": "https://github.com/kennycha/cursor-chat-keeper",
+  "license": "MIT",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.95.0"
@@ -25,6 +27,9 @@
       }
     ]
   },
+  "activationEvents": [
+    "onCommand:cursor-chat-keeper.collectChats"
+  ],
   "scripts": {
     "vscode:prepublish": "pnpm run package",
     "compile": "webpack",
