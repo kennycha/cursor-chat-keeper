@@ -13,16 +13,11 @@ export interface Tab {
 export interface Bubble {
   id: string;
   type: 'user' | 'ai';
-  notepads: Notepad[];
   selections: Selection[];
   fileSelections: FileSelection[];
   folderSelections: FolderSelection[];
   text: string;
   modelType?: string;
-}
-
-export interface Notepad {
-  text: string;
 }
 
 export interface Selection {

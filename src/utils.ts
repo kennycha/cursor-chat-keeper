@@ -49,6 +49,191 @@ function getChatData(db: sqlite.Database): Promise<ChatData> {
   });
 }
 
+function getProjectPath(): string {
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  if (!workspaceFolders) {
+    throw new Error('작업 공간을 찾을 수 없습니다');
+  }
+  return workspaceFolders[0].uri.fsPath;
+}
+
+function removeProjectPath(path: string): string {
+  return path.replace(getProjectPath(), '');
+}
+
+function formatDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+
+  return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
+}
+
+function bubbleToMarkdown(bubble: Bubble): string {
+  const parts: string[] = [];
+  parts.push(`<!-- Bubble ID: ${bubble.id} -->`);
+  const author = bubble.type === 'user' ? '👤 User' : `🤖 AI (${bubble.modelType})`;
+  parts.push(`**${author}**\n`);
+
+  if (bubble.text) {
+    parts.push(`${bubble.text}\n`);
+  }
+
+  if (bubble.selections?.length || bubble.fileSelections?.length || bubble.folderSelections?.length) {
+    parts.push(`**코드 선택 / 파일 / 폴더**\n`);
+
+    bubble.selections?.forEach(selection => {
+      parts.push(`<details><summary>Code ${removeProjectPath(selection.uri.path)} (line ${selection.range.selectionStartLineNumber})</summary>\n`);
+      parts.push(selection.text);
+      parts.push('</details>');
+    });
+
+    bubble.fileSelections?.forEach(file => {
+      parts.push(`File ${removeProjectPath(file.uri.path)}\n`);
+    });
+
+    bubble.folderSelections?.forEach(folder => {
+      parts.push(`Folder ${removeProjectPath(folder.uri.path)}\n`);
+    });
+  }
+
+  return parts.join('\n');
+}
+
+function tabToMarkdown(tab: Tab, existingBubbles: Set<string> = new Set()): string {
+  const parts: string[] = [];
+  parts.push(`<!-- Tab ID: ${tab.tabId} -->`);
+
+  const title = tab.chatTitle || 'Untitled Chat';
+  parts.push(`## ${title}`);
+  if (tab.lastSendTime) {
+    parts.push(`**마지막 활동**: ${formatDate(new Date(tab.lastSendTime))}\n`);
+  }
+
+  tab.bubbles.forEach(bubble => {
+    if (!existingBubbles.has(bubble.id)) {
+      parts.push(bubbleToMarkdown(bubble));
+      parts.push('\n');
+    }
+  });
+
+  return parts.join('\n');
+}
+
+function parseExistingMarkdown(content: string): ParsedContent {
+  const tabs = new Map<string, TabContent>();
+  let currentTabId: string | null = null;
+  let currentTabContent: string[] = [];
+  let currentBubbles = new Set<string>();
+  let position = 0;
+
+  const lines = content.split('\n');
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    position += line.length + 1; // +1 for newline
+
+    const tabMatch = line.match(/^<!-- Tab ID: ([a-zA-Z0-9-]+) -->/);
+    if (tabMatch) {
+      if (currentTabId) {
+        tabs.set(currentTabId, {
+          content: currentTabContent.join('\n'),
+          bubbles: currentBubbles,
+          lastPosition: position
+        });
+      }
+      currentTabId = tabMatch[1];
+      currentTabContent = [line];
+      currentBubbles = new Set<string>();
+      continue;
+    }
+
+    const bubbleMatch = line.match(/^<!-- Bubble ID: ([a-zA-Z0-9-]+) -->/);
+    if (bubbleMatch && currentTabId) {
+      currentBubbles.add(bubbleMatch[1]);
+    }
+
+    if (currentTabId) {
+      currentTabContent.push(line);
+    }
+  }
+
+  if (currentTabId) {
+    tabs.set(currentTabId, {
+      content: currentTabContent.join('\n'),
+      bubbles: currentBubbles,
+      lastPosition: position
+    });
+  }
+
+  return { tabs };
+}
+
+export async function updateCursorChatMarkdown(data: ChatData): Promise<void> {
+  const markdownPath = path.join(getProjectPath(), 'cursor-chat.md');
+
+  let existingContent = '';
+  let parsedContent: ParsedContent = { tabs: new Map() };
+
+  try {
+    const fileExists = await fs.access(markdownPath)
+      .then(() => true)
+      .catch(() => false);
+
+    if (fileExists) {
+      existingContent = await fs.readFile(markdownPath, 'utf-8');
+      parsedContent = parseExistingMarkdown(existingContent);
+    }
+  } catch (error) {
+    existingContent = '# Cursor Chats\n\n';
+  }
+
+  const newContent: string[] = ['# Cursor Chats\n'];
+
+  data.tabs.forEach((tab, index) => {
+    const existingTab = parsedContent.tabs.get(tab.tabId);
+
+    if (existingTab) {
+      if (index > 0) {
+        newContent.push('\n---\n');
+      }
+
+      newContent.push(`<!-- Tab ID: ${tab.tabId} -->`);
+      newContent.push(`## ${tab.chatTitle || 'Untitled Chat'}`);
+      if (tab.lastSendTime) {
+        newContent.push(`**마지막 활동**: ${formatDate(new Date(tab.lastSendTime))}\n`);
+      }
+
+      const existingLines = existingTab.content.split('\n');
+      const bubbleStartIndex = existingLines.findIndex(line => line.includes('<!-- Bubble ID:'));
+      if (bubbleStartIndex !== -1) {
+        const existingBubbles = existingLines.slice(bubbleStartIndex).join('\n');
+        newContent.push(existingBubbles);
+      }
+
+      const newBubbles = tab.bubbles.filter(bubble => !existingTab.bubbles.has(bubble.id));
+      if (newBubbles.length > 0) {
+        newContent.push('');
+        newBubbles.forEach(bubble => {
+          newContent.push(bubbleToMarkdown(bubble));
+          newContent.push('');
+        });
+      }
+    } else {
+      if (index > 0) {
+        newContent.push('\n---\n');
+      }
+      newContent.push(tabToMarkdown(tab));
+    }
+  });
+
+  await fs.writeFile(markdownPath, newContent.join('\n'));
+}
+
+
 export async function collectAndSaveChats(context: vscode.ExtensionContext): Promise<string> {
   const currentWorkspaceId = context.storageUri?.fsPath
     ? path.basename(path.dirname(context.storageUri.fsPath))
@@ -69,171 +254,4 @@ export async function collectAndSaveChats(context: vscode.ExtensionContext): Pro
   }
 
   return "Scripts successfully collected and saved!";
-}
-
-function parseExistingMarkdown(content: string): ParsedContent {
-  const tabs = new Map<string, TabContent>();
-  let currentTabId: string | null = null;
-  let currentTabContent: string[] = [];
-  let currentBubbles = new Set<string>();
-  let position = 0;
-
-  const lines = content.split('\n');
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    position += line.length + 1; // +1 for newline
-
-    // Tab ID marker
-    const tabMatch = line.match(/^<!-- Tab ID: ([a-zA-Z0-9-]+) -->/);
-    if (tabMatch) {
-      if (currentTabId) {
-        tabs.set(currentTabId, {
-          content: currentTabContent.join('\n'),
-          bubbles: currentBubbles,
-          lastPosition: position
-        });
-      }
-      currentTabId = tabMatch[1];
-      currentTabContent = [line];
-      currentBubbles = new Set<string>();
-      continue;
-    }
-
-    // Bubble ID marker
-    const bubbleMatch = line.match(/^<!-- Bubble ID: ([a-zA-Z0-9-]+) -->/);
-    if (bubbleMatch && currentTabId) {
-      currentBubbles.add(bubbleMatch[1]);
-    }
-
-    if (currentTabId) {
-      currentTabContent.push(line);
-    }
-  }
-
-  // Don't forget to save the last tab
-  if (currentTabId) {
-    tabs.set(currentTabId, {
-      content: currentTabContent.join('\n'),
-      bubbles: currentBubbles,
-      lastPosition: position
-    });
-  }
-
-  return { tabs };
-}
-
-// Function to convert a single bubble to markdown
-function bubbleToMarkdown(bubble: Bubble): string {
-  const parts: string[] = [];
-
-  // Add bubble ID marker
-  parts.push(`<!-- Bubble ID: ${bubble.id} -->`);
-
-  // Add author indicator
-  const author = bubble.type === 'user' ? '👤 User' : '🤖 AI';
-  parts.push(`### ${author}`);
-
-  // Add main content
-  if (bubble.text) {
-    parts.push(bubble.text);
-  }
-
-  // Add notepads if they exist
-  if (bubble.notepads && bubble.notepads.length > 0) {
-    parts.push('\n#### Notepads:');
-    bubble.notepads.forEach((notepad, index) => {
-      parts.push(`${index + 1}. ${JSON.stringify(notepad.text)}`);
-    });
-  }
-
-  // Add additional non-false boolean fields and relevant information
-  Object.entries(bubble).forEach(([key, value]) => {
-    if (typeof value === 'boolean' && value === true && key !== 'type') {
-      parts.push(`\n**${key}**: ${value}`);
-    }
-  });
-
-  // Add AI-specific information if present
-  if (bubble.type === 'ai') {
-    if (bubble.modelType) {
-      parts.push(`\n**Model**: ${bubble.modelType}`);
-    }
-  }
-
-  return parts.join('\n\n');
-}
-
-// Function to convert a single tab to markdown
-function tabToMarkdown(tab: Tab, existingBubbles: Set<string> = new Set()): string {
-  const parts: string[] = [];
-
-  // Add tab ID marker
-  parts.push(`<!-- Tab ID: ${tab.tabId} -->`);
-
-  // Add tab header
-  const title = tab.chatTitle || 'Untitled Chat';
-  parts.push(`# ${title}`);
-  parts.push(`**Tab State**: ${tab.tabState}`);
-  if (tab.lastSendTime) {
-    parts.push(`**Last Activity**: ${new Date(tab.lastSendTime).toISOString()}`);
-  }
-  parts.push('\n---\n');
-
-  // Add new bubbles only
-  tab.bubbles.forEach((bubble, index) => {
-    if (!existingBubbles.has(bubble.id)) {
-      if (index > 0) {
-        parts.push('\n---\n');
-      }
-      parts.push(bubbleToMarkdown(bubble));
-    }
-  });
-
-  return parts.join('\n');
-}
-
-// Main function to incrementally update markdown file
-export async function updateCursorChatMarkdown(
-  data: ChatData,
-): Promise<void> {
-  const workspaceFolders = vscode.workspace.workspaceFolders;
-  if (!workspaceFolders) {
-    throw new Error('No workspace folders found');
-  }
-  const markdownPath = path.join(workspaceFolders[0].uri.fsPath, 'cursor-chat.md');
-
-  let existingContent = '';
-  let parsedContent: ParsedContent = { tabs: new Map() };
-
-  try {
-    existingContent = await fs.readFile(markdownPath, 'utf-8');
-    parsedContent = parseExistingMarkdown(existingContent);
-  } catch (error) {
-    // File doesn't exist yet, start fresh
-    existingContent = '# Cursor Chat History\n\n';
-  }
-
-  const newContent: string[] = [existingContent.trim()];
-
-  // Process each tab
-  for (const tab of data.tabs) {
-    const existingTab = parsedContent.tabs.get(tab.tabId);
-
-    if (existingTab) {
-      // Check for new bubbles
-      const newBubblesContent = tabToMarkdown(tab, existingTab.bubbles);
-      if (newBubblesContent.includes('### ')) { // Only append if there are new messages
-        newContent.push('\n\n## ==============================\n\n');
-        newContent.push(newBubblesContent);
-      }
-    } else {
-      // New tab
-      newContent.push('\n\n## ==============================\n\n');
-      newContent.push(tabToMarkdown(tab));
-    }
-  }
-
-  // Write the updated content back to file
-  await fs.writeFile(markdownPath, newContent.join(''));
 }
