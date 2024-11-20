@@ -52,7 +52,7 @@ function getChatData(db: sqlite.Database): Promise<ChatData> {
 function getProjectPath(): string {
   const workspaceFolders = vscode.workspace.workspaceFolders;
   if (!workspaceFolders) {
-    throw new Error('작업 공간을 찾을 수 없습니다');
+    throw new Error('No workspace found.');
   }
   return workspaceFolders[0].uri.fsPath;
 }
@@ -83,7 +83,7 @@ function bubbleToMarkdown(bubble: Bubble): string {
   }
 
   if (bubble.selections?.length || bubble.fileSelections?.length || bubble.folderSelections?.length) {
-    parts.push(`**코드 선택 / 파일 / 폴더**\n`);
+    parts.push(`**Code / File / Folder**\n`);
 
     bubble.selections?.forEach(selection => {
       parts.push(`<details><summary>Code ${removeProjectPath(selection.uri.path)} (line ${selection.range.selectionStartLineNumber})</summary>\n`);
@@ -110,7 +110,7 @@ function tabToMarkdown(tab: Tab, existingBubbles: Set<string> = new Set()): stri
   const title = tab.chatTitle || 'Untitled Chat';
   parts.push(`## ${title}`);
   if (tab.lastSendTime) {
-    parts.push(`**마지막 활동**: ${formatDate(new Date(tab.lastSendTime))}\n`);
+    parts.push(`**Last Send Time**: ${formatDate(new Date(tab.lastSendTime))}\n`);
   }
 
   tab.bubbles.forEach(bubble => {
@@ -204,7 +204,7 @@ export async function updateCursorChatMarkdown(data: ChatData): Promise<void> {
       newContent.push(`<!-- Tab ID: ${tab.tabId} -->`);
       newContent.push(`## ${tab.chatTitle || 'Untitled Chat'}`);
       if (tab.lastSendTime) {
-        newContent.push(`**마지막 활동**: ${formatDate(new Date(tab.lastSendTime))}\n`);
+        newContent.push(`**Last Send Time**: ${formatDate(new Date(tab.lastSendTime))}\n`);
       }
 
       const existingLines = existingTab.content.split('\n');

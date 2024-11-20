@@ -1,12 +1,14 @@
 {
   "name": "cursor-chat-keeper",
   "displayName": "Cursor Chat Keeper",
+  "publisher": "kennycha",
   "description": "Collects and organizes scripts from Cursor chat into Markdown files.",
+  "icon": "images/icon.png",
   "repository": "https://github.com/kennycha/cursor-chat-keeper",
   "license": "MIT",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "engines": {
-    "vscode": "^1.95.0"
+    "vscode": "^1.74.0"
   },
   "categories": [
     "AI",
@@ -44,7 +46,7 @@
   "devDependencies": {
     "@types/mocha": "^10.0.9",
     "@types/node": "22.9.0",
-    "@types/vscode": "^1.95.0",
+    "@types/vscode": "^1.74.0",
     "@typescript-eslint/eslint-plugin": "^8.10.0",
     "@typescript-eslint/parser": "^8.7.0",
     "@vscode/test-cli": "^0.0.10",

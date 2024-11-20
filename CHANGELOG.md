@@ -4,6 +4,15 @@ All notable changes to the "cursor-chat-keeper" extension will be documented in 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [Unreleased]
+## [0.0.1]
 
 - Initial release
+
+## [0.0.2]
+
+- Add icon
+
+## [0.0.3]
+
+- Translate to English
+- Support lower version of VSCode
