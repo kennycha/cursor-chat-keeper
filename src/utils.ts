@@ -253,5 +253,5 @@ export async function collectAndSaveChats(context: vscode.ExtensionContext): Pro
     throw new Error(`Failed to collect scripts: ${error}`);
   }
 
-  return "Scripts successfully collected and saved!";
+  return "Chats successfully collected and saved!";
 }
