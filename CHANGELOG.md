@@ -16,3 +16,16 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 - Translate to English
 - Support lower version of VSCode
+
+## [0.0.4]
+
+- Fix some typos
+- Update README
+
+## [0.0.5]
+
+- Add output example in README
+
+## [0.0.6]
+
+- Fix some typos

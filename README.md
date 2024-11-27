@@ -1,6 +1,6 @@
 # Cursor Chat Keeper
 
-VSCode extension that saves your Cursor chat history as a markdown file. This extension helps you keep track of your AI conversations in Cursor editor by automatically formatting and organizing them into a readable markdown document.
+Cursor extension that saves your Cursor chat history as a markdown file. This extension helps you keep track of your AI conversations in Cursor editor by automatically formatting and organizing them into a readable markdown document.
 
 > ## Features
 
@@ -10,7 +10,7 @@ VSCode extension that saves your Cursor chat history as a markdown file. This ex
 
 - Cursor Editor installed
 - VSCode 1.74.0 or higher
-- Active workspace (folder) opened in VSCode
+- Active workspace (folder) opened in Cursor
 - The extension reads chat history from Cursor's database file, which is located at:
 
   - Windows: `~\APPDATA\Roaming\Cursor`
