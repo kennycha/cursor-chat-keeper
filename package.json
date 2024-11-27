@@ -2,7 +2,7 @@
   "name": "cursor-chat-keeper",
   "displayName": "Cursor Chat Keeper",
   "publisher": "kennycha",
-  "description": "Collects and organizes scripts from Cursor chat into Markdown files.",
+  "description": "Collects and organizes chats from Cursor into Markdown files.",
   "icon": "images/icon.png",
   "repository": "https://github.com/kennycha/cursor-chat-keeper",
   "license": "MIT",
