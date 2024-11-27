@@ -24,6 +24,15 @@ VSCode extension that saves your Cursor chat history as a markdown file. This ex
 3. Search for "Cursor Chat Keeper"
 4. Click Install
 
+or
+
+Follow the steps according to the Cursor Docs[(How to Install Any VSCode Extension in Cursor)](https://www.cursor.com/how-to-install-extension):
+
+1. Go to [Marketplace | Cursor Chat Keeper](https://marketplace.visualstudio.com/items?itemName=kennycha.cursor-chat-keeper)
+2. Click Download Extension on the right side
+3. Open Cursor and go to Extensions Pane
+4. Drag the downloaded file into the Extensions Pane
+
 > ## Usage
 
 ### Command Palette

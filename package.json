@@ -6,7 +6,7 @@
   "icon": "images/icon.png",
   "repository": "https://github.com/kennycha/cursor-chat-keeper",
   "license": "MIT",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "engines": {
     "vscode": "^1.74.0"
   },
