@@ -172,15 +172,19 @@ function parseExistingMarkdown(content: string): ParsedContent {
   return { tabs };
 }
 
-async function ensureTabsDirectory(): Promise<string> {
-  const tabsPath = path.join(getProjectPath(), 'tabs');
+async function ensureDirectories(): Promise<{ rootPath: string, tabsPath: string }> {
+  const rootPath = path.join(getProjectPath(), 'cursor-chats');
+  const tabsPath = path.join(rootPath, 'tabs');
+
+  await fs.mkdir(rootPath, { recursive: true });
   await fs.mkdir(tabsPath, { recursive: true });
-  return tabsPath;
+
+  return { rootPath, tabsPath };
 }
 
 export async function updateCursorChatMarkdown(data: ChatData): Promise<void> {
-  const markdownPath = path.join(getProjectPath(), 'cursor-chat.md');
-  const tabsPath = await ensureTabsDirectory();
+  const { rootPath, tabsPath } = await ensureDirectories();
+  const indexPath = path.join(rootPath, 'index.md');
 
   const indexContent: string[] = ['# Cursor Chat History\n'];
   indexContent.push('아래 채팅 목록을 클릭하여 상세 내용을 확인하세요.\n');
@@ -200,7 +204,7 @@ export async function updateCursorChatMarkdown(data: ChatData): Promise<void> {
     if (tab.lastSendTime) {
       tabContent.push(`**마지막 대화**: ${formatDate(new Date(tab.lastSendTime))}\n`);
     }
-    tabContent.push(`[목차로 돌아가기](../cursor-chat.md)\n`);
+    tabContent.push(`[목차로 돌아가기](../index.md)\n`);
 
     tab.bubbles.forEach(bubble => {
       tabContent.push(bubbleToMarkdown(bubble));
@@ -210,7 +214,7 @@ export async function updateCursorChatMarkdown(data: ChatData): Promise<void> {
     await fs.writeFile(path.join(tabsPath, tabFileName), tabContent.join('\n'));
   }
 
-  await fs.writeFile(markdownPath, indexContent.join('\n'));
+  await fs.writeFile(indexPath, indexContent.join('\n'));
 }
 
 export async function collectAndSaveChats(context: vscode.ExtensionContext): Promise<string> {

@@ -34,3 +34,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 - Create index page
 - Change the way to collect and save chats
+
+## [0.1.1]
+
+- Organize cursor-chats into one folder
