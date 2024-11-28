@@ -29,3 +29,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## [0.0.6]
 
 - Fix some typos
+
+## [0.1.0]
+
+- Create index page
+- Change the way to collect and save chats
