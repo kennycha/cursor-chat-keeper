@@ -187,7 +187,7 @@ export async function updateCursorChatMarkdown(data: ChatData): Promise<void> {
   const indexPath = path.join(rootPath, 'index.md');
 
   const indexContent: string[] = ['# Cursor Chat History\n'];
-  indexContent.push('아래 채팅 목록을 클릭하여 상세 내용을 확인하세요.\n');
+  indexContent.push('Click on the chat items below to view details.\n');
 
   for (const tab of data.tabs) {
     const tabTitle = tab.chatTitle || 'Untitled Chat';
@@ -202,9 +202,9 @@ export async function updateCursorChatMarkdown(data: ChatData): Promise<void> {
     const tabContent: string[] = [];
     tabContent.push(`# ${tabTitle}\n`);
     if (tab.lastSendTime) {
-      tabContent.push(`**마지막 대화**: ${formatDate(new Date(tab.lastSendTime))}\n`);
+      tabContent.push(`**Last Conversation**: ${formatDate(new Date(tab.lastSendTime))}\n`);
     }
-    tabContent.push(`[목차로 돌아가기](../index.md)\n`);
+    tabContent.push(`[Back to Index](../index.md)\n`);
 
     tab.bubbles.forEach(bubble => {
       tabContent.push(bubbleToMarkdown(bubble));

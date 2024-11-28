@@ -38,3 +38,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## [0.1.1]
 
 - Organize cursor-chats into one folder
+
+## [0.1.2]
+
+- Translate to English
