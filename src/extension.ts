@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { collectAndSaveChats } from "./utils";
+import { collectAndSaveChats } from "./legacy-utils";
 
 export function activate(context: vscode.ExtensionContext) {
 	let disposable = vscode.commands.registerCommand("cursor-chat-keeper.collectChats", async () => {

@@ -1,59 +1,80 @@
-export interface ChatData {
-  tabs: Tab[];
+export interface ComposerBodyDatum {
+  codeBlockData: {
+    [filePath: string]: CodeBlockDatum[]
+  }
+  composerId: string;
+  context: ComposerContext;
+  conversation: ComposerConversation[];
+  createdAt: number;
+  lastUpdatedAt: number;
+  name: string;
+  unifiedMode: 'chat' | 'edit';
 }
 
-export interface Tab {
-  tabId: string;
-  chatTitle: string;
-  tabState: 'chat';
-  bubbles: Bubble[];
-  lastSendTime: number;
-}
-
-export interface Bubble {
-  id: string;
-  type: 'user' | 'ai';
-  selections: Selection[];
-  fileSelections: FileSelection[];
-  folderSelections: FolderSelection[];
-  text: string;
-  modelType?: string;
-}
-
-export interface Selection {
-  text: string,
-  range: {
-    selectionStartLineNumber: 36,
-    selectionStartColumn: 1,
-    positionLineNumber: 88,
-    positionColumn: 4
-  },
-  uri: {
-    path: string;
-    scheme: string;
-  };
-}
-
-export interface FileSelection {
-  uri: {
-    path: string;
-    scheme: string;
-  };
-}
-
-export interface FolderSelection {
-  uri: {
-    path: string;
-    scheme: string;
-  };
-}
-
-export interface TabContent {
+export interface CodeBlockDatum {
+  uri: Uri;
   content: string;
-  bubbles: Set<string>;
-  lastPosition: number;
+  languageId: string;
 }
 
-export interface ParsedContent {
-  tabs: Map<string, TabContent>;
+export interface ComposerConversation {
+  bubbleId: string;
+  // type이 1 일때만 존재
+  context?: ComposerContext;
+  codeBlocks: {
+    codeBlockIdx: number;
+  }[]
+  text: string;
+  // 1: user, 2: ai
+  type: 1 | 2
+  relevantFiles: string[];
+}
+
+export interface ComposerContext {
+  composers: {
+    composerId: string
+  }[]
+  cursorRules: {
+    filename: string;
+  }[]
+  externalLinks: string[];
+  fileSelections: {
+    uri: Uri;
+  }[];
+  folderSelections: {
+    relativePath: string;
+  }[];
+  notepads: {
+    nodepadId: string;
+  }[];
+  selectedCommits: {
+    message: string;
+    sha: string;
+  }
+  selectedDocs: {
+    docId: string;
+    name: string;
+    url: string;
+  }[]
+  selections: {
+    range: Range
+    text: string;
+    uri: Uri;
+  }[];
+  terminalSelections: {
+    range: Range;
+    text: string;
+  }[];
+}
+
+export interface Uri {
+  path: string;
+  scheme: string;
+}
+
+export interface Range {
+  positionColumn: number;
+  positionLineNumber: number;
+  selectionStartColumn: number;
+  selectionStartLineNumber: number;
 }
