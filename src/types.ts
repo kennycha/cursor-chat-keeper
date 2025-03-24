@@ -1,3 +1,9 @@
+export interface ComposerData {
+  allComposers: {
+    composerId: string;
+  }[];
+}
+
 export interface ComposerBodyDatum {
   codeBlockData: {
     [filePath: string]: CodeBlockDatum[]
@@ -31,26 +37,28 @@ export interface ComposerConversation {
 }
 
 export interface ComposerContext {
-  composers: {
-    composerId: string
-  }[]
+  // composers: {
+  //   composerId: string
+  // }[]
   cursorRules: {
     filename: string;
   }[]
-  externalLinks: string[];
+  externalLinks: {
+    url: string;
+  }[];
   fileSelections: {
     uri: Uri;
   }[];
   folderSelections: {
     relativePath: string;
   }[];
-  notepads: {
-    nodepadId: string;
-  }[];
+  // notepads: {
+  //   nodepadId: string;
+  // }[];
   selectedCommits: {
     message: string;
     sha: string;
-  }
+  }[]
   selectedDocs: {
     docId: string;
     name: string;

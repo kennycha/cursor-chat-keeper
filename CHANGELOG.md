@@ -42,3 +42,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## [0.1.2]
 
 - Translate to English
+
+## [1.0.0]
+
+- Support the new way of cursor saves chats
