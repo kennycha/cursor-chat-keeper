@@ -64,7 +64,7 @@ The markdown file will be organized as follows:
 
 **Last Conversation**: 2025/03/24 21:03:54
 
-[Back to Index](../index.md)
+[Back to Index](.)
 
 <!-- Bubble ID: 3d5a7752-fad2-4f96-8612-693b560ff193 -->
 
