@@ -47,7 +47,7 @@ function getBasePath(): string {
     case "darwin":
       return path.join(os.homedir(), "Library", "Application Support", "Cursor", 'User');
     case "win32":
-      return path.join(os.homedir(), "%APPDATA%", "Roaming", "Cursor", 'User');
+      return path.join(os.homedir(), "AppData", "Roaming", "Cursor", 'User');
     case "linux":
       return path.join(os.homedir(), ".config", "Cursor", 'User');
     default:
@@ -97,9 +97,15 @@ async function queryComposerData(db: sqlite.Database): Promise<ComposerData> {
       (error, row) => {
         if (error) {
           reject(error);
+        } else if (!row) {
+          reject(new Error("No composer data found in database"));
         } else {
-          const composerData: ComposerData = JSON.parse((row as any).value);
-          resolve(composerData);
+          try {
+            const composerData: ComposerData = JSON.parse((row as any).value);
+            resolve(composerData);
+          } catch (parseError) {
+            reject(new Error(`Failed to parse composer data: ${parseError}`));
+          }
         }
       }
     );
@@ -117,8 +123,12 @@ async function queryComposerBodyData(db: sqlite.Database, keys: string[], placeH
         if (error) {
           reject(error);
         } else {
-          const composerBodyData: ComposerBodyDatum[] = rows.map((row) => JSON.parse((row as any).value));
-          resolve(composerBodyData);
+          try {
+            const composerBodyData: ComposerBodyDatum[] = rows.map((row) => JSON.parse((row as any).value));
+            resolve(composerBodyData);
+          } catch (parseError) {
+            reject(new Error(`Failed to parse composer body data: ${parseError}`));
+          }
         }
       }
     );
@@ -151,7 +161,7 @@ async function composerBodyDataToMarkdown(composerBodyData: ComposerBodyDatum[])
     }
     chatContent.push(`[Back to Index](../index.md)\n`);
 
-    composerBody.conversation.forEach((conversation) => {
+    composerBody.conversation?.forEach((conversation) => {
       chatContent.push(conversationToMarkdown(conversation));
       chatContent.push("\n");
     });
@@ -196,49 +206,49 @@ function conversationToMarkdown(conversation: ComposerConversation): string {
   if (conversation.context) {
     const { cursorRules, externalLinks, fileSelections, folderSelections, selectedCommits, selectedDocs, selections, terminalSelections } = conversation.context;
 
-    if (cursorRules.length > 0) {
+    if (cursorRules && cursorRules.length > 0) {
       parts.push("**Cursor Rules:**\n");
       cursorRules.forEach((rule) => {
         parts.push(`- ${rule.filename}\n`);
       });
     }
 
-    if (externalLinks.length > 0) {
+    if (externalLinks && externalLinks.length > 0) {
       parts.push("**External Links:**\n");
       externalLinks.forEach((link) => {
         parts.push(`- ${link.url}\n`);
       });
     }
 
-    if (fileSelections.length > 0) {
+    if (fileSelections && fileSelections.length > 0) {
       parts.push("**File Selections:**\n");
       fileSelections.forEach((selection) => {
         parts.push(`- ${selection.uri.path}\n`);
       });
     }
 
-    if (folderSelections.length > 0) {
+    if (folderSelections && folderSelections.length > 0) {
       parts.push("**Folder Selections:**\n");
       folderSelections.forEach((selection) => {
         parts.push(`- ${selection.relativePath}\n`);
       });
     }
 
-    if (selectedCommits.length > 0) {
+    if (selectedCommits && selectedCommits.length > 0) {
       parts.push("**Selected Commits:**\n");
       selectedCommits.forEach((commit) => {
         parts.push(`- ${commit.message}\n`);
       });
     }
 
-    if (selectedDocs.length > 0) {
+    if (selectedDocs && selectedDocs.length > 0) {
       parts.push("**Selected Docs:**\n");
       selectedDocs.forEach((doc) => {
         parts.push(`- ${doc.name} (${doc.url})\n`);
       });
     }
 
-    if (selections.length > 0) {
+    if (selections && selections.length > 0) {
       parts.push("**Selections:**\n");
       selections.forEach((selection) => {
         const lineCount = selection.text.split("\n").length;
@@ -250,7 +260,7 @@ function conversationToMarkdown(conversation: ComposerConversation): string {
       });
     }
 
-    if (terminalSelections.length > 0) {
+    if (terminalSelections && terminalSelections.length > 0) {
       parts.push("**Terminal Selections:**\n");
       terminalSelections.forEach((selection) => {
         const lineCount = selection.text.split("\n").length;
