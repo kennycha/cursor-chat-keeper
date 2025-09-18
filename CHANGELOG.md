@@ -46,3 +46,15 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## [1.0.0]
 
 - Support the new way of cursor saves chats
+
+## [1.0.1]
+
+- Refactor codes
+
+## [1.0.2]
+
+- Lazy load native modules
+
+## [1.0.3]
+
+- Fixed undefined length error and enhanced null safety checks

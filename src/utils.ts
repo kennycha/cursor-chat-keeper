@@ -20,7 +20,7 @@ const CURSOR_PATHS = {
 } as const;
 
 export async function collectAndSaveChats(
-  context: vscode.ExtensionContext, 
+  context: vscode.ExtensionContext,
   progress?: vscode.Progress<{ message?: string; increment?: number }>
 ): Promise<string> {
   if (!context.storageUri) {
@@ -32,12 +32,19 @@ export async function collectAndSaveChats(
   try {
     sqlite = await import("@vscode/sqlite3");
   } catch (error) {
-    throw new Error(`Failed to load SQLite module. Please ensure you're running in a compatible environment: ${error}`);
+    throw new Error(
+      `Failed to load SQLite module. Please ensure you're running in a compatible environment: ${error}`
+    );
   }
 
   const basePath = getBasePath();
   const currentWorkspaceId = getCurrentWorkspaceId(context.storageUri.fsPath);
-  const workspaceDbPath = path.join(basePath, DB_CONSTANTS.WORKSPACE_STORAGE, currentWorkspaceId, DB_CONSTANTS.WORKSPACE_DB);
+  const workspaceDbPath = path.join(
+    basePath,
+    DB_CONSTANTS.WORKSPACE_STORAGE,
+    currentWorkspaceId,
+    DB_CONSTANTS.WORKSPACE_DB
+  );
 
   await validateDatabasePath(workspaceDbPath);
 
@@ -52,19 +59,43 @@ export async function collectAndSaveChats(
     }
 
     progress?.report({ message: "Reading global database..." });
-    const globalDbPath = path.join(basePath, DB_CONSTANTS.GLOBAL_STORAGE, DB_CONSTANTS.GLOBAL_DB);
+    const globalDbPath = path.join(
+      basePath,
+      DB_CONSTANTS.GLOBAL_STORAGE,
+      DB_CONSTANTS.GLOBAL_DB
+    );
     await validateDatabasePath(globalDbPath);
     const globalDb = await initDatabase(globalDbPath, sqlite);
-    const keys = composerData.allComposers.map(({ composerId }) => `${DB_CONSTANTS.COMPOSER_DATA_PREFIX}${composerId}`);
+    if (!composerData.allComposers || composerData.allComposers.length === 0) {
+      return "No composers found in database";
+    }
+
+    const keys = composerData.allComposers.map(
+      ({ composerId }) => `${DB_CONSTANTS.COMPOSER_DATA_PREFIX}${composerId}`
+    );
     const placeHolders = keys.map(() => "?").join(",");
-    const composerBodyData = await queryComposerBodyData(globalDb, keys, placeHolders);
+    const composerBodyData = await queryComposerBodyData(
+      globalDb,
+      keys,
+      placeHolders
+    );
     await terminateDatabase(globalDb);
-    const sorted = composerBodyData.toSorted((a, b) => b.createdAt - a.createdAt);
+
+    if (!composerBodyData || !Array.isArray(composerBodyData)) {
+      throw new Error("Invalid composer body data: not an array");
+    }
+
+    if (composerBodyData.length === 0) {
+      return "No chat data found in database";
+    }
+
+    const sorted = composerBodyData.toSorted(
+      (a, b) => b.createdAt - a.createdAt
+    );
     progress?.report({ message: "Generating markdown files..." });
     const outputPath = await composerBodyDataToMarkdown(sorted, progress);
-    
-    return `Successfully collected and saved chats to: ${outputPath}`;
 
+    return `Successfully collected and saved chats to: ${outputPath}`;
   } catch (error) {
     throw new Error(`Failed to collect chats: ${error}`);
   }
@@ -77,11 +108,15 @@ function getCurrentWorkspaceId(storagePath: string): string {
 function getBasePath(): string {
   const platform = process.platform as keyof typeof CURSOR_PATHS;
   const platformPath = CURSOR_PATHS[platform];
-  
+
   if (!platformPath) {
-    throw new Error(`Unsupported platform: ${process.platform}. Supported platforms: ${Object.keys(CURSOR_PATHS).join(', ')}`);
+    throw new Error(
+      `Unsupported platform: ${
+        process.platform
+      }. Supported platforms: ${Object.keys(CURSOR_PATHS).join(", ")}`
+    );
   }
-  
+
   return path.join(os.homedir(), platformPath);
 }
 
@@ -89,7 +124,9 @@ async function validateDatabasePath(dbPath: string): Promise<void> {
   try {
     await fs.access(dbPath, fs.constants.F_OK);
   } catch (error) {
-    throw new Error(`Database file not found: ${dbPath}. Please ensure Cursor is installed and has been used at least once.`);
+    throw new Error(
+      `Database file not found: ${dbPath}. Please ensure Cursor is installed and has been used at least once.`
+    );
   }
 }
 
@@ -101,7 +138,10 @@ function getProjectPath(): string {
   return workspaceFolders[0].uri.fsPath;
 }
 
-async function initDatabase(dbPath: string, sqlite: typeof import("@vscode/sqlite3")): Promise<InstanceType<typeof sqlite.Database>> {
+async function initDatabase(
+  dbPath: string,
+  sqlite: typeof import("@vscode/sqlite3")
+): Promise<InstanceType<typeof sqlite.Database>> {
   return new Promise((resolve, reject) => {
     const db = new sqlite.Database(dbPath, (error) => {
       if (error) {
@@ -113,7 +153,9 @@ async function initDatabase(dbPath: string, sqlite: typeof import("@vscode/sqlit
   });
 }
 
-async function terminateDatabase(db: InstanceType<typeof import("@vscode/sqlite3").Database>): Promise<void> {
+async function terminateDatabase(
+  db: InstanceType<typeof import("@vscode/sqlite3").Database>
+): Promise<void> {
   return new Promise((resolve, reject) => {
     db.close((error) => {
       if (error) {
@@ -125,7 +167,9 @@ async function terminateDatabase(db: InstanceType<typeof import("@vscode/sqlite3
   });
 }
 
-async function queryComposerData(db: InstanceType<typeof import("@vscode/sqlite3").Database>): Promise<ComposerData> {
+async function queryComposerData(
+  db: InstanceType<typeof import("@vscode/sqlite3").Database>
+): Promise<ComposerData> {
   return new Promise((resolve, reject) => {
     db.get(
       `
@@ -140,7 +184,12 @@ async function queryComposerData(db: InstanceType<typeof import("@vscode/sqlite3
           reject(new Error("No composer data found in database"));
         } else {
           try {
-            const composerData: ComposerData = JSON.parse((row as { value: string }).value);
+            const rowData = row as { value?: string };
+            if (!rowData.value) {
+              reject(new Error("Invalid composer data row: missing value"));
+              return;
+            }
+            const composerData: ComposerData = JSON.parse(rowData.value);
             resolve(composerData);
           } catch (parseError) {
             reject(new Error(`Failed to parse composer data: ${parseError}`));
@@ -151,22 +200,37 @@ async function queryComposerData(db: InstanceType<typeof import("@vscode/sqlite3
   });
 }
 
-async function queryComposerBodyData(db: InstanceType<typeof import("@vscode/sqlite3").Database>, keys: string[], placeHolders: string): Promise<ComposerBodyDatum[]> {
+async function queryComposerBodyData(
+  db: InstanceType<typeof import("@vscode/sqlite3").Database>,
+  keys: string[],
+  placeHolders: string
+): Promise<ComposerBodyDatum[]> {
   return new Promise((resolve, reject) => {
     db.all(
       `
       SELECT value FROM cursorDiskKV 
       WHERE [key] in (${placeHolders})
-    `, keys,
+    `,
+      keys,
       (error, rows) => {
         if (error) {
           reject(error);
         } else {
           try {
-            const composerBodyData: ComposerBodyDatum[] = rows.map((row) => JSON.parse((row as { value: string }).value));
+            const composerBodyData: ComposerBodyDatum[] = rows
+              .filter((row) => {
+                const rowData = row as { value?: string };
+                return rowData && rowData.value;
+              })
+              .map((row) => {
+                const rowData = row as { value: string };
+                return JSON.parse(rowData.value);
+              });
             resolve(composerBodyData);
           } catch (parseError) {
-            reject(new Error(`Failed to parse composer body data: ${parseError}`));
+            reject(
+              new Error(`Failed to parse composer body data: ${parseError}`)
+            );
           }
         }
       }
@@ -175,9 +239,13 @@ async function queryComposerBodyData(db: InstanceType<typeof import("@vscode/sql
 }
 
 async function composerBodyDataToMarkdown(
-  composerBodyData: ComposerBodyDatum[], 
+  composerBodyData: ComposerBodyDatum[],
   progress?: vscode.Progress<{ message?: string; increment?: number }>
 ): Promise<string> {
+  if (!composerBodyData || !Array.isArray(composerBodyData)) {
+    throw new Error("Invalid composer body data provided to markdown function");
+  }
+
   const { rootPath, chatsPath } = await ensureDirectories();
   const indexPath = path.join(rootPath, "index.md");
 
@@ -187,14 +255,16 @@ async function composerBodyDataToMarkdown(
   const total = composerBodyData.length;
   for (let i = 0; i < total; i++) {
     const composerBody = composerBodyData[i];
-    progress?.report({ 
-      message: `Processing chat ${i + 1} of ${total}: ${composerBody.name || 'Untitled Chat'}` 
+    progress?.report({
+      message: `Processing chat ${i + 1} of ${total}: ${
+        composerBody.name ?? "Untitled Chat"
+      }`,
     });
-    if (composerBody.conversation.length === 0) {
+    if (!composerBody.conversation || composerBody.conversation.length === 0) {
       continue;
     }
 
-    const chatTitle = composerBody.name || "Untitled Chat";
+    const chatTitle = composerBody.name ?? "Untitled Chat";
     const chatFileName = `${composerBody.composerId}.md`;
 
     indexContent.push(`- [${chatTitle}](chats/${chatFileName})`);
@@ -204,7 +274,11 @@ async function composerBodyDataToMarkdown(
     const chatContent: string[] = [];
     chatContent.push(`# ${chatTitle}\n`);
     if (composerBody.lastUpdatedAt) {
-      chatContent.push(`**Last Conversation**: ${formatDate(new Date(composerBody.lastUpdatedAt))}\n`);
+      chatContent.push(
+        `**Last Conversation**: ${formatDate(
+          new Date(composerBody.lastUpdatedAt)
+        )}\n`
+      );
     }
     chatContent.push(`[Back to Index](../index.md)\n`);
 
@@ -213,14 +287,20 @@ async function composerBodyDataToMarkdown(
       chatContent.push("\n");
     });
 
-    await fs.writeFile(path.join(chatsPath, chatFileName), chatContent.join("\n"));
+    await fs.writeFile(
+      path.join(chatsPath, chatFileName),
+      chatContent.join("\n")
+    );
   }
 
   await fs.writeFile(indexPath, indexContent.join("\n"));
   return rootPath;
 }
 
-async function ensureDirectories(): Promise<{ rootPath: string; chatsPath: string }> {
+async function ensureDirectories(): Promise<{
+  rootPath: string;
+  chatsPath: string;
+}> {
   const rootPath = path.join(getProjectPath(), "cursor-chats");
   const chatsPath = path.join(rootPath, "chats");
 
@@ -242,8 +322,12 @@ function formatDate(date: Date): string {
 }
 
 function conversationToMarkdown(conversation: ComposerConversation): string {
+  if (!conversation) {
+    return "<!-- Invalid conversation data -->\n";
+  }
+
   const parts: string[] = [];
-  parts.push(`<!-- Bubble ID: ${conversation.bubbleId} -->`);
+  parts.push(`<!-- Bubble ID: ${conversation.bubbleId ?? "unknown"} -->`);
   const author = conversation.type === 1 ? "👤 User" : `🤖 AI`;
   parts.push(`**${author}**\n`);
 
@@ -252,7 +336,16 @@ function conversationToMarkdown(conversation: ComposerConversation): string {
   }
 
   if (conversation.context) {
-    const { cursorRules, externalLinks, fileSelections, folderSelections, selectedCommits, selectedDocs, selections, terminalSelections } = conversation.context;
+    const {
+      cursorRules,
+      externalLinks,
+      fileSelections,
+      folderSelections,
+      selectedCommits,
+      selectedDocs,
+      selections,
+      terminalSelections,
+    } = conversation.context;
 
     if (cursorRules && cursorRules.length > 0) {
       parts.push("**Cursor Rules:**\n");
@@ -271,7 +364,9 @@ function conversationToMarkdown(conversation: ComposerConversation): string {
     if (fileSelections && fileSelections.length > 0) {
       parts.push("**File Selections:**\n");
       fileSelections.forEach((selection) => {
-        parts.push(`- ${selection.uri.path}\n`);
+        if (selection.uri && selection.uri.path) {
+          parts.push(`- ${selection.uri.path}\n`);
+        }
       });
     }
 
@@ -299,20 +394,29 @@ function conversationToMarkdown(conversation: ComposerConversation): string {
     if (selections && selections.length > 0) {
       parts.push("**Selections:**\n");
       selections.forEach((selection) => {
-        const location = selection.uri ?
-          `${path.basename(selection.uri.path)} (${selection.range.selectionStartLineNumber}-${selection.range.positionLineNumber})` :
-          'Unknown location';
+        const location =
+          selection.uri && selection.uri.path
+            ? `${path.basename(selection.uri.path)} (${
+                selection.range?.selectionStartLineNumber ?? 0
+              }-${selection.range?.positionLineNumber ?? 0})`
+            : "Unknown location";
         parts.push(`- ${location}\n`);
-        parts.push(`${selection.text}\n`);
+        if (selection.text) {
+          parts.push(`${selection.text}\n`);
+        }
       });
     }
 
     if (terminalSelections && terminalSelections.length > 0) {
       parts.push("**Terminal Selections:**\n");
       terminalSelections.forEach((selection) => {
-        const location = `Terminal (${selection.range.selectionStartLineNumber}-${selection.range.positionLineNumber})`;
+        const location = `Terminal (${
+          selection.range?.selectionStartLineNumber ?? 0
+        }-${selection.range?.positionLineNumber ?? 0})`;
         parts.push(`- ${location}\n`);
-        parts.push(`${selection.text}\n`);
+        if (selection.text) {
+          parts.push(`${selection.text}\n`);
+        }
       });
     }
   }
